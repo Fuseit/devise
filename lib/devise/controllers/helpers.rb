@@ -132,7 +132,14 @@ module Devise
 
       # The main accessor for the warden proxy instance
       def warden
-        request.env['warden']
+        if Rails.env.test?
+          @warden ||= begin
+            manager = Warden::Manager.new nil, &Rails.application.config.middleware.detect{ |m| m.name == 'Warden::Manager' }.block
+            request.env['warden'] = Warden::Proxy.new request.env, manager
+          end
+        else
+          request.env['warden']
+        end
       end
 
       # Return true if it's a devise_controller. false to all controllers unless
