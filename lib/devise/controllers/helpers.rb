@@ -68,7 +68,14 @@ module Devise
 
       # The main accessor for the warden proxy instance
       def warden
-        request.env['warden']
+        if Rails.env.test? && request_env_warden.nil?
+          @warden ||= begin
+            manager = Warden::Manager.new nil, &Rails.application.config.middleware.detect{ |m| m.name == 'Warden::Manager' }.block
+            request.env['warden'] = Warden::Proxy.new request.env, manager
+          end
+        else
+          request_env_warden
+        end
       end
 
       # Return true if it's a devise_controller. false to all controllers unless
@@ -291,6 +298,10 @@ module Devise
 
       def expire_devise_cached_variables!
         Devise.mappings.each { |_,m| instance_variable_set("@current_#{m.name}", nil) }
+      end
+
+      def request_env_warden
+        request.env['warden']
       end
     end
   end
